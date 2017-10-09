@@ -12,6 +12,7 @@ from chainer.training.triggers import ManualScheduleTrigger
 from chainercv.datasets import voc_bbox_label_names
 from chainercv.datasets import VOCBboxDataset
 from chainercv.extensions import DetectionVOCEvaluator
+from chainercv.links import FasterRCNNResNet50
 from chainercv.links import FasterRCNNVGG16
 from chainercv.links.model.faster_rcnn import FasterRCNNTrainChain
 from chainercv import transforms
@@ -60,6 +61,8 @@ class Transform(object):
 def main():
     parser = argparse.ArgumentParser(
         description='ChainerCV training example: Faster R-CNN')
+    parser.add_argument('--model', choices=('vgg16', 'resnet50'),
+                        help='The model to use', default='vgg16')
     parser.add_argument('--dataset', choices=('voc07', 'voc0712'),
                         help='The dataset to use: VOC07, VOC07+12',
                         default='voc07')
@@ -82,8 +85,14 @@ def main():
             VOCBboxDataset(year='2012', split='trainval'))
     test_data = VOCBboxDataset(split='test', year='2007',
                                use_difficult=True, return_difficult=True)
-    faster_rcnn = FasterRCNNVGG16(n_fg_class=len(voc_bbox_label_names),
-                                  pretrained_model='imagenet')
+    if args.model == 'vgg16':
+        faster_rcnn = FasterRCNNVGG16(n_fg_class=len(voc_bbox_label_names),
+                                      pretrained_model='imagenet')
+    elif args.model == 'resnet50':
+        faster_rcnn = FasterRCNNResNet50(n_fg_class=len(voc_bbox_label_names),
+                                         pretrained_model='imagenet')
+    else:
+        raise ValueError
     faster_rcnn.use_preset('evaluate')
     model = FasterRCNNTrainChain(faster_rcnn)
     if args.gpu >= 0:
