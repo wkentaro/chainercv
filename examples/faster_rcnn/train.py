@@ -147,7 +147,11 @@ def main():
     if extensions.PlotReport.available():
         trainer.extend(
             extensions.PlotReport(
-                ['main/loss'],
+                ['main/loss',
+                 'main/roi_loc_loss',
+                 'main/roi_cls_loss',
+                 'main/rpn_loc_loss',
+                 'main/rpn_cls_loss'],
                 file_name='loss.png', trigger=plot_interval
             ),
             trigger=plot_interval
