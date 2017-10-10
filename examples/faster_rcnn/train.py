@@ -73,6 +73,7 @@ def main():
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--step_size', '-ss', type=int, default=50000)
     parser.add_argument('--iteration', '-i', type=int, default=70000)
+    parser.add_argument('--weight_decay', type=float, default=0.0005)
     args = parser.parse_args()
 
     np.random.seed(args.seed)
@@ -100,7 +101,7 @@ def main():
         model.to_gpu()
     optimizer = chainer.optimizers.MomentumSGD(lr=args.lr, momentum=0.9)
     optimizer.setup(model)
-    optimizer.add_hook(chainer.optimizer.WeightDecay(rate=0.0005))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(rate=args.weight_decay))
 
     train_data = TransformDataset(train_data, Transform(faster_rcnn))
 
@@ -147,12 +148,14 @@ def main():
             trigger=plot_interval
         )
 
+    points = [i * args.iteration // 10 for i in xrange(10)]
+    points += [args.step_size, args.iteration]
+    points = sorted(list(set(points)))
     trainer.extend(
         DetectionVOCEvaluator(
             test_iter, model.faster_rcnn, use_07_metric=True,
             label_names=voc_bbox_label_names),
-        trigger=ManualScheduleTrigger(
-            [args.step_size, args.iteration], 'iteration'))
+        trigger=ManualScheduleTrigger(points, 'iteration'))
 
     trainer.extend(extensions.dump_graph('main/loss'))
 
