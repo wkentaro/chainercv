@@ -128,7 +128,7 @@ class FasterRCNNResNet50(FasterRCNN):
             extractor,
             rpn,
             head,
-            mean=np.array([122.7717, 115.9465, 102.9801],
+            mean=np.array([123.152, 115.903, 103.063],
                           dtype=np.float32)[:, None, None],
             min_size=min_size,
             max_size=max_size
@@ -145,6 +145,10 @@ class FasterRCNNResNet50(FasterRCNN):
     def _copy_imagenet_pretrained_resnet50(self):
         pretrained_model = ResNet50Layers(pretrained_model='auto')
         self.extractor.conv1.copyparams(pretrained_model.conv1)
+        # The pretrained weights are trained to accept BGR images.
+        # Convert weights so that they accept RGB images.
+        self.extractor.conv1.W.data[:] = \
+            self.extractor.conv1.W.data[:, ::-1]
         self.extractor.bn1.copyparams(pretrained_model.bn1)
         self.extractor.res2.copyparams(pretrained_model.res2)
         self.extractor.res3.copyparams(pretrained_model.res3)
