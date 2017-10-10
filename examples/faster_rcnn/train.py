@@ -61,7 +61,8 @@ class Transform(object):
 def main():
     parser = argparse.ArgumentParser(
         description='ChainerCV training example: Faster R-CNN')
-    parser.add_argument('--model', choices=('vgg16', 'resnet50'),
+    parser.add_argument('--model',
+                        choices=('vgg16', 'resnet50', 'vgg16_align'),
                         help='The model to use', default='vgg16')
     parser.add_argument('--dataset', choices=('voc07', 'voc0712'),
                         help='The dataset to use: VOC07, VOC07+12',
@@ -89,6 +90,10 @@ def main():
     if args.model == 'vgg16':
         faster_rcnn = FasterRCNNVGG16(n_fg_class=len(voc_bbox_label_names),
                                       pretrained_model='imagenet')
+    elif args.model == 'vgg16_align':
+        faster_rcnn = FasterRCNNVGG16(n_fg_class=len(voc_bbox_label_names),
+                                      pretrained_model='imagenet',
+                                      roi_align=True)
     elif args.model == 'resnet50':
         faster_rcnn = FasterRCNNResNet50(n_fg_class=len(voc_bbox_label_names),
                                          pretrained_model='imagenet')
