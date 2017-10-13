@@ -11,6 +11,29 @@ from chainercv.links.model.faster_rcnn.region_proposal_network import \
 from chainercv.utils import download_model
 
 
+def copy_persistent_link(dst, src):
+    for name in dst._persistent:
+        d = dst.__dict__[name]
+        s = src.__dict__[name]
+        if isinstance(d, np.ndarray):
+            d[:] = s
+        elif isinstance(d, int):
+            d = s
+        else:
+            raise ValueError
+
+
+def copy_persistent_chain(dst, src):
+    copy_persistent_link(dst, src)
+    for name in dst._children:
+        if (isinstance(dst.__dict__[name], chainer.Chain) and
+                isinstance(src.__dict__[name], chainer.Chain)):
+            copy_persistent_chain(dst.__dict__[name], src.__dict__[name])
+        elif (isinstance(dst.__dict__[name], chainer.Link) and
+                isinstance(src.__dict__[name], chainer.Link)):
+            copy_persistent_link(dst.__dict__[name], src.__dict__[name])
+
+
 class FasterRCNNResNet50(FasterRCNN):
 
     """Faster R-CNN based on VGG-16.
@@ -99,10 +122,11 @@ class FasterRCNNResNet50(FasterRCNN):
         class ResNet50(ResNet50Layers):
 
             def __call__(self, x):
-                out = super(ResNet50, self).__call__(x, layers=['res4'])
+                with chainer.using_config('train', False):
+                    out = super(ResNet50, self).__call__(x, layers=['res4'])
                 return out['res4']
 
-        # TODO(wkentaro)
+        # TODO(wkentaro): Use PickableSequentialChain.
         extractor = ResNet50(pretrained_model=None)
         # extractor = ResNet50(initialW=res_initialW)
         # extractor.pick = 'res5'
@@ -144,16 +168,27 @@ class FasterRCNNResNet50(FasterRCNN):
 
     def _copy_imagenet_pretrained_resnet50(self):
         pretrained_model = ResNet50Layers(pretrained_model='auto')
+
         self.extractor.conv1.copyparams(pretrained_model.conv1)
         # The pretrained weights are trained to accept BGR images.
         # Convert weights so that they accept RGB images.
         self.extractor.conv1.W.data[:] = \
             self.extractor.conv1.W.data[:, ::-1]
+
         self.extractor.bn1.copyparams(pretrained_model.bn1)
+        copy_persistent_chain(self.extractor.bn1, pretrained_model.bn1)
+
         self.extractor.res2.copyparams(pretrained_model.res2)
+        copy_persistent_chain(self.extractor.res2, pretrained_model.res2)
+
         self.extractor.res3.copyparams(pretrained_model.res3)
+        copy_persistent_chain(self.extractor.res3, pretrained_model.res3)
+
         self.extractor.res4.copyparams(pretrained_model.res4)
+        copy_persistent_chain(self.extractor.res4, pretrained_model.res4)
+
         self.head.res5.copyparams(pretrained_model.res5)
+        copy_persistent_chain(self.head.res5, pretrained_model.res5)
 
 
 class ResNet50RoIHead(chainer.Chain):
@@ -214,7 +249,8 @@ class ResNet50RoIHead(chainer.Chain):
             x, indices_and_rois, self.roi_size, self.roi_size,
             self.spatial_scale)
 
-        res5 = self.res5(pool)
+        with chainer.using_config('train', False):
+            res5 = self.res5(pool)
         from chainer.links.model.vision.resnet import \
             _global_average_pooling_2d
         pool5 = _global_average_pooling_2d(res5)
