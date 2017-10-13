@@ -77,7 +77,7 @@ class FasterRCNNResNet50(FasterRCNN):
                  pretrained_model=None,
                  min_size=600, max_size=1000,
                  ratios=[0.5, 1, 2], anchor_scales=[8, 16, 32],
-                 resnet_initialW=None, rpn_initialW=None,
+                 res_initialW=None, rpn_initialW=None,
                  loc_initialW=None, score_initialW=None,
                  proposal_creator_params=dict()
                  ):
@@ -93,8 +93,8 @@ class FasterRCNNResNet50(FasterRCNN):
             score_initialW = chainer.initializers.Normal(0.01)
         if rpn_initialW is None:
             rpn_initialW = chainer.initializers.Normal(0.01)
-        if resnet_initialW is None and pretrained_model:
-            resnet_initialW = chainer.initializers.constant.Zero()
+        if res_initialW is None and pretrained_model:
+            res_initialW = chainer.initializers.constant.Zero()
 
         class ResNet50(ResNet50Layers):
 
@@ -104,7 +104,7 @@ class FasterRCNNResNet50(FasterRCNN):
 
         # TODO(wkentaro)
         extractor = ResNet50(pretrained_model=None)
-        # extractor = ResNet50(initialW=resnet_initialW)
+        # extractor = ResNet50(initialW=res_initialW)
         # extractor.pick = 'res5'
         # # Delete all layers after conv5_3.
         # extractor.remove_unused()
@@ -119,7 +119,7 @@ class FasterRCNNResNet50(FasterRCNN):
         head = ResNet50RoIHead(
             n_fg_class + 1,
             roi_size=7, spatial_scale=1. / self.feat_stride,
-            resnet_initialW=resnet_initialW,
+            res_initialW=res_initialW,
             loc_initialW=loc_initialW,
             score_initialW=score_initialW
         )
@@ -176,13 +176,13 @@ class ResNet50RoIHead(chainer.Chain):
     """
 
     def __init__(self, n_class, roi_size, spatial_scale,
-                 resnet_initialW=None, loc_initialW=None, score_initialW=None):
+                 res_initialW=None, loc_initialW=None, score_initialW=None):
         # n_class includes the background
         super(ResNet50RoIHead, self).__init__()
         with self.init_scope():
             from chainer.links.model.vision.resnet import BuildingBlock
             self.res5 = BuildingBlock(
-                3, 1024, 512, 2048, 2, initialW=resnet_initialW)
+                3, 1024, 512, 2048, 2, initialW=res_initialW)
             self.cls_loc = L.Linear(2048, n_class * 4, initialW=loc_initialW)
             self.score = L.Linear(2048, n_class, initialW=score_initialW)
 
