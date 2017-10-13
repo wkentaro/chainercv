@@ -25,7 +25,8 @@ def copy_persistent_link(dst, src):
 
 def copy_persistent_chain(dst, src):
     copy_persistent_link(dst, src)
-    for name in dst._children:
+    for l in dst.children():
+        name = l.name
         if (isinstance(dst.__dict__[name], chainer.Chain) and
                 isinstance(src.__dict__[name], chainer.Chain)):
             copy_persistent_chain(dst.__dict__[name], src.__dict__[name])
