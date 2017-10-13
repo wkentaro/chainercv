@@ -108,6 +108,20 @@ def main():
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(rate=args.weight_decay))
 
+    # This is only relevant to ResNet training.
+    if args.model == 'resnet50':
+        for p in model.params():
+            # Do not update batch normalization layers.
+            if p.name == 'gamma':
+                p.update_rule.enabled = False
+            elif p.name == 'beta':
+                p.update_rule.enabled = False
+
+        # Do not update for the first two blocks.
+        faster_rcnn.extractor.conv1.disable_update()
+        faster_rcnn.extractor.bn1.disable_update()
+        faster_rcnn.extractor.res2.disable_update()
+
     train_data = TransformDataset(train_data, Transform(faster_rcnn))
 
     train_iter = chainer.iterators.MultiprocessIterator(
