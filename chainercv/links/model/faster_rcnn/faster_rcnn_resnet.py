@@ -124,11 +124,13 @@ class FasterRCNNResNet(FasterRCNN):
             res_initialW = chainer.initializers.constant.Zero()
 
         if resnet_name == 'resnet50':
-            ResNetLayers = ResNet50Layers
+            self._resnet_layers = ResNet50Layers
         elif resnet_name == 'resnet101':
-            ResNetLayers = ResNet101Layers
+            self._resnet_layers = ResNet101Layers
+        else:
+            raise ValueError
 
-        class ResNet(ResNetLayers):
+        class ResNet(self._resnet_layers):
 
             def __call__(self, x):
                 with chainer.using_config('train', False):
@@ -172,12 +174,12 @@ class FasterRCNNResNet(FasterRCNN):
             path = download_model(self._models[pretrained_model]['url'])
             chainer.serializers.load_npz(path, self)
         elif pretrained_model == 'imagenet':
-            self._copy_imagenet_pretrained_resnet50()
+            self._copy_imagenet_pretrained_resnet()
         elif pretrained_model:
             chainer.serializers.load_npz(pretrained_model, self)
 
-    def _copy_imagenet_pretrained_resnet50(self):
-        pretrained_model = ResNet50Layers(pretrained_model='auto')
+    def _copy_imagenet_pretrained_resnet(self):
+        pretrained_model = self._resnet_layers(pretrained_model='auto')
 
         self.extractor.conv1.copyparams(pretrained_model.conv1)
         # The pretrained weights are trained to accept BGR images.
