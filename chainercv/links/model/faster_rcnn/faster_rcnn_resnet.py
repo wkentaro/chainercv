@@ -3,6 +3,7 @@ import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
+from chainer.links.model.vision.resnet import ResNet101Layers
 from chainer.links.model.vision.resnet import ResNet50Layers
 
 from chainercv.links.model.faster_rcnn.faster_rcnn import FasterRCNN
@@ -35,7 +36,7 @@ def copy_persistent_chain(dst, src):
             copy_persistent_link(dst.__dict__[name], src.__dict__[name])
 
 
-class FasterRCNNResNet50(FasterRCNN):
+class FasterRCNNResNet(FasterRCNN):
 
     """Faster R-CNN based on VGG-16.
 
@@ -97,6 +98,7 @@ class FasterRCNNResNet50(FasterRCNN):
     feat_stride = 16
 
     def __init__(self,
+                 resnet_name,
                  n_fg_class=None,
                  pretrained_model=None,
                  min_size=600, max_size=1000,
@@ -121,15 +123,20 @@ class FasterRCNNResNet50(FasterRCNN):
         if res_initialW is None and pretrained_model:
             res_initialW = chainer.initializers.constant.Zero()
 
-        class ResNet50(ResNet50Layers):
+        if resnet_name == 'resnet50':
+            ResNetLayers = ResNet50Layers
+        elif resnet_name == 'resnet101':
+            ResNetLayers = ResNet101Layers
+
+        class ResNet(ResNetLayers):
 
             def __call__(self, x):
                 with chainer.using_config('train', False):
-                    out = super(ResNet50, self).__call__(x, layers=['res4'])
+                    out = super(ResNet, self).__call__(x, layers=['res4'])
                 return out['res4']
 
         # TODO(wkentaro): Use PickableSequentialChain.
-        extractor = ResNet50(pretrained_model=None)
+        extractor = ResNet(pretrained_model=None)
         # extractor = ResNet50(initialW=res_initialW)
         # extractor.pick = 'res5'
         # # Delete all layers after conv5_3.
@@ -142,7 +149,7 @@ class FasterRCNNResNet50(FasterRCNN):
             initialW=rpn_initialW,
             proposal_creator_params=proposal_creator_params,
         )
-        head = ResNet50RoIHead(
+        head = ResNetRoIHead(
             n_fg_class + 1,
             roi_size=7, spatial_scale=1. / self.feat_stride,
             res_initialW=res_initialW,
@@ -151,7 +158,7 @@ class FasterRCNNResNet50(FasterRCNN):
             roi_align=roi_align,
         )
 
-        super(FasterRCNNResNet50, self).__init__(
+        super(FasterRCNNResNet, self).__init__(
             extractor,
             rpn,
             head,
@@ -194,7 +201,7 @@ class FasterRCNNResNet50(FasterRCNN):
         copy_persistent_chain(self.head.res5, pretrained_model.res5)
 
 
-class ResNet50RoIHead(chainer.Chain):
+class ResNetRoIHead(chainer.Chain):
 
     """Faster R-CNN Head for VGG-16 based implementation.
 
@@ -217,7 +224,7 @@ class ResNet50RoIHead(chainer.Chain):
                  res_initialW=None, loc_initialW=None, score_initialW=None,
                  roi_align=False):
         # n_class includes the background
-        super(ResNet50RoIHead, self).__init__()
+        super(ResNetRoIHead, self).__init__()
         with self.init_scope():
             from chainer.links.model.vision.resnet import BuildingBlock
             self.res5 = BuildingBlock(
@@ -270,3 +277,17 @@ def _roi_pooling_2d_yx(x, indices_and_rois, outh, outw, spatial_scale,
     func = F.roi_align_2d if roi_align else F.roi_pooling_2d
     pool = func(x, xy_indices_and_rois, outh, outw, spatial_scale)
     return pool
+
+
+class FasterRCNNResNet50(FasterRCNNResNet):
+
+    def __init__(self, *args, **kwargs):
+        return super(FasterRCNNResNet50, self).__init__(
+            'resnet50', *args, **kwargs)
+
+
+class FasterRCNNResNet101(FasterRCNNResNet):
+
+    def __init__(self, *args, **kwargs):
+        return super(FasterRCNNResNet101, self).__init__(
+            'resnet101', *args, **kwargs)
