@@ -1,4 +1,5 @@
 from chainercv.links.model.faster_rcnn.faster_rcnn import FasterRCNN  # NOQA
+from chainercv.links.model.faster_rcnn.faster_rcnn_resnet import FasterRCNNResNet101  # NOQA
 from chainercv.links.model.faster_rcnn.faster_rcnn_resnet import FasterRCNNResNet50  # NOQA
 from chainercv.links.model.faster_rcnn.faster_rcnn_train_chain import FasterRCNNTrainChain  # NOQA
 from chainercv.links.model.faster_rcnn.faster_rcnn_vgg import FasterRCNNVGG16  # NOQA
