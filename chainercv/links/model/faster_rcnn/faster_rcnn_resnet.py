@@ -103,7 +103,8 @@ class FasterRCNNResNet50(FasterRCNN):
                  ratios=[0.5, 1, 2], anchor_scales=[8, 16, 32],
                  res_initialW=None, rpn_initialW=None,
                  loc_initialW=None, score_initialW=None,
-                 proposal_creator_params=dict()
+                 proposal_creator_params=dict(),
+                 roi_align=False,
                  ):
         if n_fg_class is None:
             if pretrained_model not in self._models:
@@ -146,7 +147,8 @@ class FasterRCNNResNet50(FasterRCNN):
             roi_size=7, spatial_scale=1. / self.feat_stride,
             res_initialW=res_initialW,
             loc_initialW=loc_initialW,
-            score_initialW=score_initialW
+            score_initialW=score_initialW,
+            roi_align=roi_align,
         )
 
         super(FasterRCNNResNet50, self).__init__(
@@ -212,7 +214,8 @@ class ResNet50RoIHead(chainer.Chain):
     """
 
     def __init__(self, n_class, roi_size, spatial_scale,
-                 res_initialW=None, loc_initialW=None, score_initialW=None):
+                 res_initialW=None, loc_initialW=None, score_initialW=None,
+                 roi_align=False):
         # n_class includes the background
         super(ResNet50RoIHead, self).__init__()
         with self.init_scope():
@@ -225,6 +228,7 @@ class ResNet50RoIHead(chainer.Chain):
         self.n_class = n_class
         self.roi_size = roi_size
         self.spatial_scale = spatial_scale
+        self._roi_align = roi_align
 
     def __call__(self, x, rois, roi_indices):
         """Forward the chain.
@@ -248,7 +252,7 @@ class ResNet50RoIHead(chainer.Chain):
             (roi_indices[:, None], rois), axis=1)
         pool = _roi_pooling_2d_yx(
             x, indices_and_rois, self.roi_size, self.roi_size,
-            self.spatial_scale)
+            self.spatial_scale, self._roi_align)
 
         with chainer.using_config('train', False):
             res5 = self.res5(pool)
@@ -260,8 +264,9 @@ class ResNet50RoIHead(chainer.Chain):
         return roi_cls_locs, roi_scores
 
 
-def _roi_pooling_2d_yx(x, indices_and_rois, outh, outw, spatial_scale):
+def _roi_pooling_2d_yx(x, indices_and_rois, outh, outw, spatial_scale,
+                       roi_align=False):
     xy_indices_and_rois = indices_and_rois[:, [0, 2, 1, 4, 3]]
-    pool = F.roi_pooling_2d(
-        x, xy_indices_and_rois, outh, outw, spatial_scale)
+    func = F.roi_align_2d if roi_align else F.roi_pooling_2d
+    pool = func(x, xy_indices_and_rois, outh, outw, spatial_scale)
     return pool
