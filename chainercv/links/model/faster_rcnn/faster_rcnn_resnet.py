@@ -106,7 +106,7 @@ class FasterRCNNResNet(FasterRCNN):
                  res_initialW=None, rpn_initialW=None,
                  loc_initialW=None, score_initialW=None,
                  proposal_creator_params=dict(),
-                 roi_align=False,
+                 roi_align=False, res5_stride=2,
                  ):
         if n_fg_class is None:
             if pretrained_model not in self._models:
@@ -158,6 +158,7 @@ class FasterRCNNResNet(FasterRCNN):
             loc_initialW=loc_initialW,
             score_initialW=score_initialW,
             roi_align=roi_align,
+            res5_stride=res5_stride,
         )
 
         super(FasterRCNNResNet, self).__init__(
@@ -224,13 +225,13 @@ class ResNetRoIHead(chainer.Chain):
 
     def __init__(self, n_class, roi_size, spatial_scale,
                  res_initialW=None, loc_initialW=None, score_initialW=None,
-                 roi_align=False):
+                 roi_align=False, res5_stride=2):
         # n_class includes the background
         super(ResNetRoIHead, self).__init__()
         with self.init_scope():
             from chainer.links.model.vision.resnet import BuildingBlock
             self.res5 = BuildingBlock(
-                3, 1024, 512, 2048, 2, initialW=res_initialW)
+                3, 1024, 512, 2048, stride=res5_stride, initialW=res_initialW)
             self.cls_loc = L.Linear(2048, n_class * 4, initialW=loc_initialW)
             self.score = L.Linear(2048, n_class, initialW=score_initialW)
 
