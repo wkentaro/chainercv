@@ -144,7 +144,7 @@ class FasterRCNNResNet(FasterRCNN):
         # # Delete all layers after conv5_3.
         # extractor.remove_unused()
         rpn = RegionProposalNetwork(
-            1024, 256,
+            1024, 512,
             ratios=ratios,
             anchor_scales=anchor_scales,
             feat_stride=self.feat_stride,
