@@ -6,6 +6,7 @@ import numpy as np
 import PIL
 
 import chainer
+from chainer.datasets import TransformDataset
 import chainer.functions as F
 import chainer.links as L
 from chainer.optimizer_hooks import WeightDecay
@@ -15,7 +16,6 @@ from chainer.training import extensions
 
 import chainermn
 
-from chainercv.chainer_experimental.datasets.sliceable import TransformDataset
 from chainercv.chainer_experimental.training.extensions import make_shift
 from chainercv.links.model.fpn.misc import scale_img
 from chainercv import transforms
@@ -222,23 +222,20 @@ def main():
     chainer.cuda.get_device_from_id(device).use()
     train_chain.to_gpu()
 
-    if mode == 'bbox':
-        train = TransformDataset(
-            COCOBboxDataset(year='2017', split='train'),
-            ('img', 'bbox', 'label'),
-            Transform(800, 1333, model.extractor.mean))
-    elif mode == 'instance_segmentation':
-        train = TransformDataset(
-            COCOInstanceSegmentationDataset(split='train', return_bbox=True),
-            ('img', 'bbox', 'label', 'mask'),
-            Transform(800, 1333, model.extractor.mean))
-
+    train = None
     if comm.rank == 0:
-        indices = np.arange(len(train))
-    else:
-        indices = None
-    indices = chainermn.scatter_dataset(indices, comm, shuffle=True)
-    train = train.slice[indices]
+        if mode == 'bbox':
+            train = TransformDataset(
+                COCOBboxDataset(split='train')
+                .slice[:, ('img', 'bbox', 'label')],
+                Transform(800, 1333, model.extractor.mean))
+        elif mode == 'instance_segmentation':
+            train = TransformDataset(
+                COCOInstanceSegmentationDataset(
+                    split='train', return_bbox=True)
+                .slice[:, ('img', 'bbox', 'label', 'mask')],
+                Transform(800, 1333, model.extractor.mean))
+    train = chainermn.scatter_dataset(train, comm, shuffle=True)
 
     train_iter = chainer.iterators.MultiprocessIterator(
         train, args.batchsize // comm.size,
