@@ -37,12 +37,13 @@ class MaskHead(chainer.Chain):
         initialW = HeNormal(1, fan_option='fan_out')
         with self.init_scope():
             self.conv1 = Conv2DActiv(256, 3, pad=1, initialW=initialW)
-            self.conv2 = Conv2DActiv(256, 3, pad=1, initialW=initialW)
-            self.conv3 = Conv2DActiv(256, 3, pad=1, initialW=initialW)
-            self.conv4 = Conv2DActiv(256, 3, pad=1, initialW=initialW)
+            self.conv2 = Conv2DActiv(256, 256, 3, pad=1, initialW=initialW)
+            self.conv3 = Conv2DActiv(256, 256, 3, pad=1, initialW=initialW)
+            self.conv4 = Conv2DActiv(256, 256, 3, pad=1, initialW=initialW)
             self.conv5 = L.Deconvolution2D(
-                256, 2, pad=0, stride=2, initialW=initialW)
-            self.seg = L.Convolution2D(n_class, 1, pad=0, initialW=initialW)
+                256, 256, 2, pad=0, stride=2, initialW=initialW)
+            self.seg = L.Convolution2D(
+                256, n_class, 1, pad=0, initialW=initialW)
 
         self._n_class = n_class
         self._scales = scales

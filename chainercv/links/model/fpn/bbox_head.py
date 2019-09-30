@@ -38,10 +38,11 @@ class BboxHead(chainer.Chain):
         }
         with self.init_scope():
             self.fc1 = L.Linear(1024, **fc_init)
-            self.fc2 = L.Linear(1024, **fc_init)
+            self.fc2 = L.Linear(1024, 1024, **fc_init)
             self.loc = L.Linear(
-                n_class * 4, initialW=initializers.Normal(0.001))
-            self.conf = L.Linear(n_class, initialW=initializers.Normal(0.01))
+                1024, n_class * 4, initialW=initializers.Normal(0.001))
+            self.conf = L.Linear(
+                1024, n_class, initialW=initializers.Normal(0.01))
 
         self._n_class = n_class
         self._scales = scales
